@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a0f">
+<title>SENTRIX</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════
+   TOKENS
+═══════════════════════════════════════════════ */
+:root {
+  --bg:         #0a0a0f;
+  --card:       #12121a;
+  --muted:      #1c1c2e;
+  --fg:         #e0e0e0;
+  --fg-muted:   #6b7280;
+  --accent:     #00ff88;
+  --accent2:    #ff00ff;
+  --accent3:    #00d4ff;
+  --border:     #2a2a3a;
+  --red:        #ff3366;
+  --glow:       0 0 6px #00ff88, 0 0 12px #00ff8840;
+  --glow-lg:    0 0 10px #00ff88, 0 0 24px #00ff8860, 0 0 48px #00ff8828;
+  --glow2:      0 0 6px #ff00ff, 0 0 20px #ff00ff50;
+  --glow3:      0 0 6px #00d4ff, 0 0 20px #00d4ff50;
+  --nav-h:      64px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ═══════════════════════════════════════════════
+   RESET + BASE
+═══════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html { scroll-behavior: smooth; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: 'JetBrains Mono', monospace;
+  min-height: 100%;
+  overflow-x: hidden;
+  overscroll-behavior: none;
+  padding-bottom: calc(var(--nav-h) + var(--safe-bottom));
+}
+
+/* scanlines */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px);
+  pointer-events: none; z-index: 9999;
+}
+
+/* circuit grid */
+.grid-bg {
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(0,255,136,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,136,0.025) 1px, transparent 1px);
+  background-size: 44px 44px;
+  pointer-events: none; z-index: 0;
+}
+.grid-bg::before {
+  content: ''; position: absolute; top: -150px; left: -150px;
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(0,255,136,0.05) 0%, transparent 70%);
+}
+.grid-bg::after {
+  content: ''; position: absolute; bottom: -150px; right: -150px;
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(255,0,255,0.04) 0%, transparent 70%);
+}
+
+/* ═══════════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════════ */
+.page { display: none; position: relative; z-index: 1; }
+.page.active { display: block; animation: fadeIn .25s ease; }
+
+.container { max-width: 860px; margin: 0 auto; padding: 0 16px; }
+@media (min-width: 640px) { .container { padding: 0 24px; } }
+
+/* ═══════════════════════════════════════════════
+   TOP BAR
+═══════════════════════════════════════════════ */
+.topbar {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(10,10,15,0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+}
+.topbar-brand {
+  font-family: 'Orbitron', monospace;
+  font-size: 18px; font-weight: 900;
+  letter-spacing: .12em; text-transform: uppercase;
+  color: var(--accent);
+  text-shadow: 0 0 8px rgba(0,255,136,.5);
+  animation: rgbShift 5s infinite;
+  flex-shrink: 0;
+}
+.topbar-status {
+  display: flex; align-items: center; gap: 6px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px; letter-spacing: .15em; text-transform: uppercase;
+  overflow: hidden;
+}
+.status-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--fg-muted); flex-shrink: 0;
+  animation: blink 2s step-end infinite;
+}
+.status-dot.online  { background: var(--accent);  box-shadow: 0 0 6px var(--accent); }
+.status-dot.offline { background: var(--red);      box-shadow: 0 0 6px var(--red); }
+.status-label { color: var(--fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+.status-label.online  { color: var(--accent); }
+.status-label.offline { color: var(--red); }
+
+/* ═══════════════════════════════════════════════
+   BOTTOM NAV
+═══════════════════════════════════════════════ */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  height: calc(var(--nav-h) + var(--safe-bottom));
+  background: rgba(12,12,20,0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border);
+  display: flex; align-items: flex-start;
+  padding-top: 8px;
+  z-index: 200;
+}
+.nav-item {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; gap: 4px;
+  padding: 6px 4px; cursor: pointer;
+  border: none; background: transparent;
+  color: var(--fg-muted);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+  transition: color 150ms;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 44px;
+}
+.nav-item.active { color: var(--accent); }
+.nav-item.active .nav-icon { filter: drop-shadow(0 0 4px var(--accent)); }
+.nav-icon { font-size: 20px; line-height: 1; }
+/* desktop: hide bottom nav, show sidebar tabs */
+@media (min-width: 768px) {
+  .bottom-nav { display: none; }
+  body { padding-bottom: 0; }
+  .desktop-tabs {
+    display: flex !important;
+    gap: 4px;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   DESKTOP TABS (topbar)
+═══════════════════════════════════════════════ */
+.desktop-tabs {
+  display: none;
+  gap: 4px;
+}
+.dtab {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px; letter-spacing: .15em; text-transform: uppercase;
+  padding: 6px 14px; border: 1px solid var(--border);
+  background: transparent; color: var(--fg-muted); cursor: pointer;
+  clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+  transition: all 150ms;
+}
+.dtab.active { border-color: var(--accent); color: var(--accent); background: rgba(0,255,136,.06); }
+.dtab:hover:not(.active) { color: var(--fg); border-color: #3a3a4a; }
+
+/* ═══════════════════════════════════════════════
+   HERO (analyze page header)
+═══════════════════════════════════════════════ */
+.hero {
+  text-align: center;
+  padding: 28px 0 20px;
+  border-bottom: 1px solid var(--border);
+}
+.hero-tag {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px; letter-spacing: .3em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 10px;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.hero-tag::before, .hero-tag::after { content: ''; width: 28px; height: 1px; background: var(--accent); opacity: .4; }
+.hero h1 {
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(2rem, 10vw, 4rem);
+  font-weight: 900; text-transform: uppercase; letter-spacing: .08em; line-height: 1;
+}
+.glitch-text {
+  color: var(--accent);
+  text-shadow: 0 0 10px rgba(0,255,136,.6), 0 0 30px rgba(0,255,136,.25);
+  animation: rgbShift 4s infinite, glitch 9s infinite;
+  position: relative; display: inline-block;
+}
+.glitch-text::before {
+  content: attr(data-text); position: absolute; left: -2px; top: 0;
+  color: var(--accent2); opacity: .65;
+  clip-path: polygon(0 28%, 100% 28%, 100% 48%, 0 48%);
+  animation: glitchClip 6s infinite;
+}
+.glitch-text::after {
+  content: attr(data-text); position: absolute; left: 2px; top: 0;
+  color: var(--accent3); opacity: .65;
+  clip-path: polygon(0 62%, 100% 62%, 100% 78%, 0 78%);
+  animation: glitchClip 4s infinite reverse;
+}
+.hero-sub {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px; color: var(--fg-muted); letter-spacing: .18em;
+  text-transform: uppercase; margin-top: 10px;
+}
+.hero-sub span { color: var(--accent3); }
+.badge-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+.badge {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px; letter-spacing: .18em; text-transform: uppercase;
+  padding: 3px 10px; border: 1px solid;
+  clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+}
+.b-g { border-color: var(--accent);  color: var(--accent); }
+.b-c { border-color: var(--accent3); color: var(--accent3); }
+.b-p { border-color: var(--accent2); color: var(--accent2); }
+
+/* ═══════════════════════════════════════════════
+   STATS STRIP
+═══════════════════════════════════════════════ */
+.stats-strip {
+  display: grid; grid-template-columns: repeat(4,1fr);
+  border: 1px solid var(--border); margin: 20px 0;
+  clip-path: polygon(0 10px, 10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px));
+  overflow: hidden;
+}
+.stat-cell {
+  padding: 12px 8px; text-align: center;
+  background: var(--card); border-right: 1px solid var(--border);
+}
+.stat-cell:last-child { border-right: none; }
+.stat-n {
+  font-family: 'Orbitron', monospace; font-size: clamp(1.1rem, 4vw, 1.5rem);
+  font-weight: 700; display: block;
+}
+.stat-n.acc  { color: var(--accent);  text-shadow: var(--glow); }
+.stat-n.neg  { color: var(--red);     text-shadow: 0 0 6px #ff336660; }
+.stat-n.cyan { color: var(--accent3); text-shadow: var(--glow3); }
+.stat-n.def  { color: var(--fg); }
+.stat-l {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--fg-muted); margin-top: 3px; display: block;
+}
+
+/* ═══════════════════════════════════════════════
+   EXAMPLES SCROLL
+═══════════════════════════════════════════════ */
+.examples-wrap {
+  display: flex; gap: 8px;
+  overflow-x: auto; padding-bottom: 8px; margin-bottom: 16px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.examples-wrap::-webkit-scrollbar { display: none; }
+.ex-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--fg-muted); white-space: nowrap;
+  display: flex; align-items: center; flex-shrink: 0;
+}
+.ex-pill {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px; letter-spacing: .08em;
+  padding: 8px 14px; background: var(--muted); border: 1px solid var(--border);
+  color: var(--fg-muted); cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+  transition: all 150ms; min-height: 44px;
+  display: flex; align-items: center;
+}
+.ex-pill:hover, .ex-pill:active { border-color: var(--accent3); color: var(--accent3); }
+
+/* ═══════════════════════════════════════════════
+   TERMINAL CARD
+═══════════════════════════════════════════════ */
+.t-card {
+  background: var(--card); border: 1px solid var(--border);
+  clip-path: polygon(0 14px, 14px 0, calc(100% - 14px) 0, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0 calc(100% - 14px));
+  transition: border-color 300ms, box-shadow 300ms;
+  margin-bottom: 16px;
+}
+.t-card:focus-within { border-color: var(--accent); box-shadow: var(--glow); }
+.t-head {
+  background: var(--muted); border-bottom: 1px solid var(--border);
+  padding: 9px 16px; display: flex; align-items: center; gap: 7px;
+}
+.dot { width: 9px; height: 9px; border-radius: 50%; }
+.dot-r { background: var(--red); }
+.dot-y { background: #ffcc00; }
+.dot-g { background: var(--accent); }
+.t-title {
+  font-family: 'Share Tech Mono', monospace; font-size: 10px;
+  letter-spacing: .18em; color: var(--fg-muted); text-transform: uppercase;
+  margin-left: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.t-body { padding: 16px; }
+
+/* ═══════════════════════════════════════════════
+   INPUT
+═══════════════════════════════════════════════ */
+.inp-wrap { position: relative; margin-bottom: 12px; }
+.inp-pre {
+  position: absolute; left: 12px; top: 14px;
+  color: var(--accent); font-family: 'Share Tech Mono', monospace;
+  font-size: 16px; pointer-events: none; z-index: 1;
+}
+textarea {
+  width: 100%;
+  background: var(--bg); border: 1px solid var(--border);
+  color: var(--accent); font-family: 'JetBrains Mono', monospace;
+  font-size: 14px; padding: 12px 12px 12px 32px;
+  resize: none; outline: none; letter-spacing: .04em; line-height: 1.6;
+  clip-path: polygon(0 7px, 7px 0, calc(100% - 7px) 0, 100% 7px, 100% calc(100% - 7px), calc(100% - 7px) 100%, 7px 100%, 0 calc(100% - 7px));
+  transition: border-color 200ms, box-shadow 200ms;
+  min-height: 90px; -webkit-appearance: none;
+}
+textarea::placeholder { color: var(--fg-muted); }
+textarea:focus { border-color: var(--accent); box-shadow: var(--glow); }
+
+.ctrl-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.btn {
+  font-family: 'Share Tech Mono', monospace; font-size: 11px;
+  letter-spacing: .18em; text-transform: uppercase;
+  padding: 12px 20px; border: 2px solid; background: transparent;
+  cursor: pointer; transition: all 150ms;
+  clip-path: polygon(7px 0, 100% 0, calc(100% - 7px) 100%, 0 100%);
+  min-height: 44px; -webkit-appearance: none;
+}
+.btn-p { border-color: var(--accent); color: var(--accent); }
+.btn-p:hover, .btn-p:active { background: var(--accent); color: var(--bg); box-shadow: var(--glow-lg); }
+.btn-s { border-color: var(--border); color: var(--fg-muted); }
+.btn-s:hover, .btn-s:active { border-color: var(--accent3); color: var(--accent3); }
+.btn:disabled { opacity: .35; cursor: not-allowed; }
+.char-c { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--fg-muted); margin-left: auto; }
+
+/* ═══════════════════════════════════════════════
+   LOADING
+═══════════════════════════════════════════════ */
+.load-bar { height: 2px; background: var(--border); overflow: hidden; margin: 14px 0; display: none; }
+.load-bar.on { display: block; }
+.load-bar::after {
+  content: ''; display: block; height: 100%;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: scan 1s linear infinite;
+}
+.load-txt {
+  font-family: 'Share Tech Mono', monospace; font-size: 10px;
+  color: var(--accent3); letter-spacing: .15em; text-transform: uppercase;
+  text-align: center; margin: -10px 0 12px; display: none;
+}
+.load-txt.on { display: block; }
+
+/* ═══════════════════════════════════════════════
+   RESULTS
+═══════════════════════════════════════════════ */
+#results { display: none; margin-top: 16px; }
+#results.show { display: block; animation: fadeIn .3s ease; }
+
+.r-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+@media (max-width: 400px) { .r-grid { grid-template-columns: 1fr; } }
+
+.r-panel {
+  background: var(--bg); border: 1px solid var(--border); padding: 14px;
+  clip-path: polygon(0 7px, 7px 0, calc(100% - 7px) 0, 100% 7px, 100% calc(100% - 7px), calc(100% - 7px) 100%, 7px 100%, 0 calc(100% - 7px));
+}
+.r-label {
+  font-family: 'Share Tech Mono', monospace; font-size: 9px;
+  letter-spacing: .25em; text-transform: uppercase; color: var(--fg-muted); margin-bottom: 7px;
+}
+.sent-val {
+  font-family: 'Orbitron', monospace; font-size: clamp(1.4rem, 6vw, 2rem);
+  font-weight: 900; text-transform: uppercase; letter-spacing: .08em; line-height: 1;
+}
+.sv-pos { color: var(--accent);  text-shadow: var(--glow); }
+.sv-neg { color: var(--red);     text-shadow: 0 0 10px #ff336680, 0 0 20px #ff336640; }
+.sv-neu { color: var(--accent3); text-shadow: var(--glow3); }
+.sent-conf {
+  font-family: 'Share Tech Mono', monospace; font-size: 10px;
+  letter-spacing: .12em; margin-top: 6px;
+}
+.info-val {
+  font-family: 'JetBrains Mono', monospace; font-size: 14px;
+  color: var(--accent3); text-shadow: var(--glow3); letter-spacing: .08em;
+}
+.emoji-display { font-size: 20px; margin-top: 4px; letter-spacing: 4px; min-height: 28px; }
+
+/* score bars */
+.score-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.sc-lbl { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; width: 58px; flex-shrink: 0; }
+.sc-track { flex: 1; height: 5px; background: var(--border); overflow: hidden; }
+.sc-fill { height: 100%; width: 0; transition: width .8s cubic-bezier(.4,0,.2,1); }
+.sf-p { background: var(--accent);  box-shadow: 0 0 5px var(--accent); }
+.sf-n { background: var(--red);     box-shadow: 0 0 5px var(--red); }
+.sf-u { background: var(--accent3); box-shadow: 0 0 5px var(--accent3); }
+.sc-pct { font-family: 'Share Tech Mono', monospace; font-size: 10px; width: 40px; text-align: right; flex-shrink: 0; }
+
+/* aspect chips */
+.aspect-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 6px; }
+.chip {
+  font-family: 'Share Tech Mono', monospace; font-size: 10px;
+  letter-spacing: .12em; text-transform: uppercase;
+  padding: 3px 10px; border: 1px solid var(--accent2); color: var(--accent2);
+  clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+  background: rgba(255,0,255,.06);
+}
+
+/* analysis */
+.analysis-box {
+  background: var(--bg); border: 1px solid var(--border);
+  border-left: 2px solid var(--accent); padding: 12px 14px;
+  font-size: 12px; line-height: 1.8; color: var(--fg);
+}
+.analysis-pre {
+  color: var(--accent); font-family: 'Share Tech Mono', monospace;
+  font-size: 9px; letter-spacing: .2em; text-transform: uppercase; margin-bottom: 5px;
+}
+
+/* ═══════════════════════════════════════════════
+   HISTORY
+═══════════════════════════════════════════════ */
+.sec-head {
+  font-family: 'Orbitron', monospace; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .2em; color: var(--fg-muted);
+  margin-bottom: 12px; display: flex; align-items: center; gap: 10px;
+}
+.sec-head::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.hist-list { display: flex; flex-direction: column; gap: 8px; }
+.hist-item {
+  background: var(--card); border: 1px solid var(--border); padding: 12px 14px;
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  clip-path: polygon(0 6px, 6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 0 calc(100% - 6px));
+  cursor: pointer; transition: border-color 200ms; flex-wrap: nowrap;
+  min-height: 48px;
+}
+.hist-item:hover, .hist-item:active { border-color: var(--accent); }
+.hist-txt {
+  font-size: 11px; color: var(--fg-muted); flex: 1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hist-badge {
+  font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: .15em;
+  text-transform: uppercase; padding: 2px 9px; border: 1px solid; flex-shrink: 0;
+  clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+}
+.hb-p { border-color: var(--accent);  color: var(--accent); }
+.hb-n { border-color: var(--red);     color: var(--red); }
+.hb-u { border-color: var(--accent3); color: var(--accent3); }
+
+/* ═══════════════════════════════════════════════
+   SETUP CARD
+═══════════════════════════════════════════════ */
+.setup-card {
+  background: var(--card); border: 1px solid var(--red);
+  clip-path: polygon(0 10px, 10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px));
+  padding: 16px; margin-bottom: 16px;
+}
+.setup-card.hidden { display: none; }
+.setup-title {
+  font-family: 'Orbitron', monospace; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .18em; color: var(--red); margin-bottom: 10px;
+}
+.setup-steps { list-style: none; counter-reset: s; }
+.setup-steps li {
+  counter-increment: s; font-size: 11px; color: var(--fg-muted);
+  line-height: 1.9; padding-left: 24px; position: relative;
+}
+.setup-steps li::before {
+  content: '0' counter(s); position: absolute; left: 0;
+  color: var(--accent3); font-family: 'Share Tech Mono', monospace; font-size: 10px;
+}
+.setup-steps code {
+  background: var(--muted); color: var(--accent); padding: 0 5px;
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; border: 1px solid var(--border);
+}
+.ip-note {
+  margin-top: 10px; padding: 8px 12px;
+  border: 1px solid var(--accent3); color: var(--accent3);
+  font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: .1em;
+}
+
+/* ═══════════════════════════════════════════════
+   DEMO PHRASES PAGE
+═══════════════════════════════════════════════ */
+.phrase-page { padding: 20px 0 32px; }
+.cat-block { margin-bottom: 24px; }
+.cat-title {
+  font-family: 'Orbitron', monospace; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .18em; color: var(--fg-muted);
+  margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+}
+.cat-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.phrase-item {
+  background: var(--card); border: 1px solid var(--border); padding: 12px 14px;
+  margin-bottom: 8px; font-size: 12px; line-height: 1.6; color: var(--fg);
+  clip-path: polygon(0 5px, 5px 0, calc(100% - 5px) 0, 100% 5px, 100% calc(100% - 5px), calc(100% - 5px) 100%, 5px 100%, 0 calc(100% - 5px));
+  cursor: pointer; transition: border-color 150ms; position: relative;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  min-height: 48px;
+}
+.phrase-item:hover, .phrase-item:active { border-color: var(--accent); }
+.phrase-txt { flex: 1; }
+.phrase-use {
+  font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--accent3); flex-shrink: 0; opacity: .6;
+}
+.lang-tag {
+  display: inline-block; font-family: 'Share Tech Mono', monospace;
+  font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+  padding: 1px 7px; border: 1px solid var(--accent2); color: var(--accent2);
+  clip-path: polygon(3px 0, 100% 0, calc(100% - 3px) 100%, 0 100%);
+  margin-right: 6px; background: rgba(255,0,255,.05);
+}
+
+/* ═══════════════════════════════════════════════
+   ABOUT PAGE
+═══════════════════════════════════════════════ */
+.about-page { padding: 20px 0 32px; }
+.about-card {
+  background: var(--card); border: 1px solid var(--border); padding: 18px;
+  clip-path: polygon(0 10px, 10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px));
+  margin-bottom: 14px;
+}
+.about-h {
+  font-family: 'Orbitron', monospace; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .2em; color: var(--accent); margin-bottom: 10px;
+}
+.about-body { font-size: 12px; line-height: 1.9; color: var(--fg-muted); }
+.about-body strong { color: var(--fg); }
+.about-body code {
+  background: var(--muted); color: var(--accent); padding: 1px 6px;
+  border: 1px solid var(--border); font-size: 11px;
+}
+.spec-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 11px;
+}
+.spec-row:last-child { border-bottom: none; }
+.spec-key { font-family: 'Share Tech Mono', monospace; color: var(--fg-muted); letter-spacing: .1em; text-transform: uppercase; }
+.spec-val { color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+
+/* ═══════════════════════════════════════════════
+   SERVER CONFIG HELPER
+═══════════════════════════════════════════════ */
+.server-helper {
+  background: var(--muted); border: 1px solid var(--border);
+  padding: 12px 14px; margin-bottom: 16px; font-size: 11px;
+  clip-path: polygon(0 6px, 6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 0 calc(100% - 6px));
+}
+.server-label {
+  font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: .2em;
+  text-transform: uppercase; color: var(--fg-muted); margin-bottom: 6px;
+}
+.server-input-row { display: flex; gap: 8px; align-items: center; }
+.server-input {
+  flex: 1; background: var(--bg); border: 1px solid var(--border);
+  color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  padding: 8px 10px; outline: none; min-height: 40px;
+  clip-path: polygon(0 5px, 5px 0, calc(100% - 5px) 0, 100% 5px, 100% calc(100% - 5px), calc(100% - 5px) 100%, 5px 100%, 0 calc(100% - 5px));
+  transition: border-color 200ms;
+}
+.server-input:focus { border-color: var(--accent); }
+.server-save {
+  font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: .15em;
+  text-transform: uppercase; padding: 8px 14px; border: 1px solid var(--accent3);
+  background: transparent; color: var(--accent3); cursor: pointer; min-height: 40px;
+  clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+  transition: all 150ms;
+}
+.server-save:hover, .server-save:active { background: var(--accent3); color: var(--bg); }
+
+/* ═══════════════════════════════════════════════
+   FOOTER
+═══════════════════════════════════════════════ */
+.page-footer {
+  text-align: center; padding: 24px 0 8px;
+  font-family: 'Share Tech Mono', monospace; font-size: 9px;
+  letter-spacing: .2em; text-transform: uppercase; color: var(--fg-muted);
+  border-top: 1px solid var(--border); margin-top: 24px;
+}
+.page-footer span { color: var(--accent); }
+
+/* ═══════════════════════════════════════════════
+   KEYFRAMES
+═══════════════════════════════════════════════ */
+@keyframes blink    { 50% { opacity: 0; } }
+@keyframes scan     { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+@keyframes fadeIn   { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes glitch   { 0%,88%,100% { transform: translate(0); } 90% { transform: translate(-2px,1px) skewX(-2deg); } 92% { transform: translate(2px,-1px); } 94% { transform: none; } 96% { transform: translate(-1px,2px); } 98% { transform: translate(1px,-1px); } }
+@keyframes rgbShift { 0%,100% { text-shadow: -2px 0 rgba(255,0,255,.35), 2px 0 rgba(0,212,255,.35), 0 0 10px rgba(0,255,136,.6), 0 0 28px rgba(0,255,136,.25); } 50% { text-shadow: 2px 0 rgba(255,0,255,.35), -2px 0 rgba(0,212,255,.35), 0 0 14px rgba(0,255,136,.7); } }
+@keyframes glitchClip { 0%,100% { clip-path: polygon(0 28%,100% 28%,100% 48%,0 48%); transform: translate(-2px); } 25% { clip-path: polygon(0 14%,100% 14%,100% 38%,0 38%); transform: translate(2px); } 50% { clip-path: polygon(0 58%,100% 58%,100% 78%,0 78%); transform: translate(-1px); } 75% { clip-path: polygon(0 44%,100% 44%,100% 56%,0 56%); transform: translate(1px); } }
+
+/* desktop tweaks */
+@media (min-width: 768px) {
+  .hero { padding: 36px 0 24px; }
+  .t-body { padding: 20px; }
+  .r-grid { grid-template-columns: 1fr 1fr; }
+  textarea { min-height: 100px; }
+}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+
+<!-- ══════════════════════════════════════════
+     TOP BAR
+══════════════════════════════════════════ -->
+<div class="topbar">
+  <div class="topbar-brand">SENTRIX</div>
+  <div class="desktop-tabs" id="desktopTabs">
+    <button class="dtab active" onclick="goPage('analyze',this)">⚡ Analyze</button>
+    <button class="dtab" onclick="goPage('phrases',this)">📋 Phrases</button>
+    <button class="dtab" onclick="goPage('about',this)">ℹ About</button>
+  </div>
+  <div class="topbar-status">
+    <div class="status-dot" id="statusDot"></div>
+    <span class="status-label" id="statusLabel">Connecting...</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE: ANALYZE
+══════════════════════════════════════════ -->
+<div class="page active" id="page-analyze">
+  <div class="container">
+
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-tag">Neural Intelligence // Local Deployment</div>
+      <h1>SENT<span class="glitch-text" data-text="RIX">RIX</span></h1>
+      <p class="hero-sub">Twitter-RoBERTa v2 // <span>On-Device</span></p>
+      <div class="badge-row">
+        <span class="badge b-g">Aspect</span>
+        <span class="badge b-c">Multilingual</span>
+        <span class="badge b-p">Emoji-Aware</span>
+      </div>
+    </div>
+
+    <!-- Server config (shown on mobile so user can set IP) -->
+    <div style="margin-top:16px;">
+      <div class="server-helper" id="serverHelper">
+        <div class="server-label">// Server Address</div>
+        <div class="server-input-row">
+          <input class="server-input" id="serverInput" type="text" value="http://localhost:5000" placeholder="http://192.168.x.x:5000">
+          <button class="server-save" onclick="saveServer()">Set</button>
+        </div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--fg-muted);margin-top:6px;letter-spacing:.1em;">
+          On mobile: use your PC's IP (shown in terminal when you run python app.py)
+        </div>
+      </div>
+    </div>
+
+    <!-- Setup card (offline) -->
+    <div class="setup-card hidden" id="setupCard">
+      <div class="setup-title">⚠ Model Server Offline</div>
+      <ol class="setup-steps">
+        <li>Place <code>twitter_roberta_v2/</code> next to <code>app.py</code></li>
+        <li>Run: <code>pip install -r requirements.txt</code></li>
+        <li>Run: <code>python app.py</code></li>
+        <li>Check terminal for your IP address, enter above</li>
+        <li>Tap <strong>Set</strong> — status will turn green</li>
+      </ol>
+      <div class="ip-note">
+        💡 Terminal shows: <strong>Running on http://192.168.x.x:5000</strong><br>
+        Use that IP on your mobile device
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-strip">
+      <div class="stat-cell">
+        <span class="stat-n def" id="st-total">0</span>
+        <span class="stat-l">Total</span>
+      </div>
+      <div class="stat-cell">
+        <span class="stat-n acc" id="st-pos">0</span>
+        <span class="stat-l">Positive</span>
+      </div>
+      <div class="stat-cell">
+        <span class="stat-n neg" id="st-neg">0</span>
+        <span class="stat-l">Negative</span>
+      </div>
+      <div class="stat-cell">
+        <span class="stat-n cyan" id="st-neu">0</span>
+        <span class="stat-l">Neutral</span>
+      </div>
+    </div>
+
+    <!-- Examples -->
+    <div class="examples-wrap">
+      <span class="ex-label">Try:</span>
+      <button class="ex-pill" onclick="loadEx('The new phone camera is absolutely stunning at night 📸😍')">📸 Camera</button>
+      <button class="ex-pill" onclick="loadEx('Battery is terrible, drains in 2 hours 😡 not worth the price')">🔋 Battery</button>
+      <button class="ex-pill" onclick="loadEx('Ce produit est incroyable! Très satisfait de la qualité.')">🇫🇷 French</button>
+      <button class="ex-pill" onclick="loadEx('This product is okay I guess, nothing special but works fine')">😐 Neutral</button>
+      <button class="ex-pill" onclick="loadEx('Absolutely love this! Best purchase I made all year 🎉❤️')">❤️ Love</button>
+      <button class="ex-pill" onclick="loadEx('Horrible quality, broke after one day. Complete waste of money 💔')">💔 Angry</button>
+      <button class="ex-pill" onclick="loadEx('¡Producto increíble! La calidad es excelente, muy satisfecho 😍')">🇪🇸 Spanish</button>
+      <button class="ex-pill" onclick="loadEx('Camera is excellent but battery life is a big disappointment')">⚖️ Mixed</button>
+    </div>
+
+    <!-- Input -->
+    <div class="t-card">
+      <div class="t-head">
+        <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+        <span class="t-title">Input Terminal — twitter_roberta_v2</span>
+      </div>
+      <div class="t-body">
+        <div class="inp-wrap">
+          <span class="inp-pre">›</span>
+          <textarea id="inputText" rows="3"
+            placeholder="Type or paste text to analyze... (tap Analyze or Ctrl+Enter)"
+            maxlength="512" oninput="updateCC()"></textarea>
+        </div>
+        <div class="ctrl-row">
+          <button class="btn btn-p" id="analyzeBtn" onclick="analyze()">⚡ Analyze</button>
+          <button class="btn btn-s" onclick="clearAll()">⌫ Clear</button>
+          <span class="char-c"><span id="cc">0</span>/512</span>
+        </div>
+        <div class="load-bar" id="loadBar"></div>
+        <div class="load-txt" id="loadTxt">// Running neural inference...</div>
+
+        <!-- Results -->
+        <div id="results">
+          <div class="r-grid">
+            <div class="r-panel">
+              <div class="r-label">// Sentiment</div>
+              <div class="sent-val" id="sentVal">—</div>
+              <div class="sent-conf" id="sentConf"></div>
+            </div>
+            <div class="r-panel">
+              <div class="r-label">// Language</div>
+              <div class="info-val" id="langVal">—</div>
+              <div style="margin-top:8px;">
+                <div class="r-label">// Emojis</div>
+                <div class="emoji-display" id="emojiVal">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="r-panel" style="margin-bottom:12px;">
+            <div class="r-label">// Confidence Scores</div>
+            <div style="margin-top:10px;">
+              <div class="score-row">
+                <span class="sc-lbl" style="color:var(--accent)">Positive</span>
+                <div class="sc-track"><div class="sc-fill sf-p" id="barP"></div></div>
+                <span class="sc-pct" id="pctP" style="color:var(--accent)">0%</span>
+              </div>
+              <div class="score-row">
+                <span class="sc-lbl" style="color:var(--red)">Negative</span>
+                <div class="sc-track"><div class="sc-fill sf-n" id="barN"></div></div>
+                <span class="sc-pct" id="pctN" style="color:var(--red)">0%</span>
+              </div>
+              <div class="score-row">
+                <span class="sc-lbl" style="color:var(--accent3)">Neutral</span>
+                <div class="sc-track"><div class="sc-fill sf-u" id="barU"></div></div>
+                <span class="sc-pct" id="pctU" style="color:var(--accent3)">0%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="r-panel" style="margin-bottom:12px;">
+            <div class="r-label">// Extracted Aspects</div>
+            <div class="aspect-chips" id="aspectChips"></div>
+          </div>
+
+          <div class="analysis-box">
+            <div class="analysis-pre">// Reasoning Output</div>
+            <div id="analysisText" style="font-size:12px;line-height:1.8;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div id="histSection" style="display:none;margin-top:4px;">
+      <div class="sec-head">Analysis Log</div>
+      <div class="hist-list" id="histList"></div>
+    </div>
+
+    <div class="page-footer">SENTRIX // twitter_roberta_v2 // <span>LOCAL NLP</span></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE: PHRASES
+══════════════════════════════════════════ -->
+<div class="page" id="page-phrases">
+  <div class="container">
+    <div class="phrase-page">
+      <div class="hero" style="margin-bottom:20px;">
+        <div class="hero-tag">Demo Dataset</div>
+        <h1 style="font-size:clamp(1.6rem,7vw,2.8rem);">PHRASE<span class="glitch-text" data-text="S">S</span></h1>
+        <p class="hero-sub">Tap any phrase to <span>load & analyze</span></p>
+      </div>
+
+      <div class="cat-block">
+        <div class="cat-title">🟢 Positive</div>
+        <div id="cat-pos"></div>
+      </div>
+      <div class="cat-block">
+        <div class="cat-title">🔴 Negative</div>
+        <div id="cat-neg"></div>
+      </div>
+      <div class="cat-block">
+        <div class="cat-title">🔵 Neutral</div>
+        <div id="cat-neu"></div>
+      </div>
+      <div class="cat-block">
+        <div class="cat-title">🌐 Multilingual</div>
+        <div id="cat-multi"></div>
+      </div>
+      <div class="cat-block">
+        <div class="cat-title">😀 Emoji-Aware</div>
+        <div id="cat-emoji"></div>
+      </div>
+      <div class="cat-block">
+        <div class="cat-title">🎯 Aspect-Based</div>
+        <div id="cat-aspect"></div>
+      </div>
+      <div class="cat-block">
+        <div class="cat-title">⚖️ Mixed / Tricky</div>
+        <div id="cat-mixed"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE: ABOUT
+══════════════════════════════════════════ -->
+<div class="page" id="page-about">
+  <div class="container">
+    <div class="about-page">
+      <div class="hero" style="margin-bottom:20px;">
+        <div class="hero-tag">System Info</div>
+        <h1 style="font-size:clamp(1.6rem,7vw,2.8rem);">ABO<span class="glitch-text" data-text="UT">UT</span></h1>
+      </div>
+
+      <div class="about-card">
+        <div class="about-h">// Model Specifications</div>
+        <div class="spec-row"><span class="spec-key">Model</span><span class="spec-val">twitter_roberta_v2</span></div>
+        <div class="spec-row"><span class="spec-key">Architecture</span><span class="spec-val">RoBERTa-base</span></div>
+        <div class="spec-row"><span class="spec-key">Task</span><span class="spec-val">Sentiment Classification</span></div>
+        <div class="spec-row"><span class="spec-key">Format</span><span class="spec-val">SafeTensors</span></div>
+        <div class="spec-row"><span class="spec-key">Backend</span><span class="spec-val">Flask + PyTorch</span></div>
+        <div class="spec-row"><span class="spec-key">Inference</span><span class="spec-val">CPU (local)</span></div>
+      </div>
+
+      <div class="about-card">
+        <div class="about-h">// Capabilities</div>
+        <div class="about-body">
+          <strong>Aspect-Based Sentiment Analysis</strong><br>
+          Automatically extracts key noun aspects (camera, battery, price) from the input text and highlights them as chips.<br><br>
+          <strong>Multilingual Support</strong><br>
+          Detects and labels French 🇫🇷, Spanish 🇪🇸, German 🇩🇪, and Portuguese 🇧🇷 inputs automatically.<br><br>
+          <strong>Emoji-Aware Processing</strong><br>
+          Extracts emojis from input and displays them separately, providing an additional sentiment signal beyond text.<br><br>
+          <strong>Lexical Override</strong><br>
+          When model confidence is below 65% but strong negative signals are detected (profanity, threats), the system overrides to NEGATIVE with a warning note.
+        </div>
+      </div>
+
+      <div class="about-card">
+        <div class="about-h">// NLP Pipeline</div>
+        <div class="about-body">
+          <strong>Preprocessing</strong> → URLs replaced with <code>http</code>, @mentions replaced with <code>@user</code><br><br>
+          <strong>Tokenization</strong> → RoBERTa BPE tokenizer, max 128 tokens<br><br>
+          <strong>Inference</strong> → Softmax over logits → confidence scores<br><br>
+          <strong>Post-processing</strong> → Language detect, emoji extract, aspect extract, lexical override<br><br>
+          <strong>Dataset</strong> → Trained on Twitter/X sentiment data (Kaggle)
+        </div>
+      </div>
+
+      <div class="about-card">
+        <div class="about-h">// Mobile Usage</div>
+        <div class="about-body">
+          Run <code>python app.py</code> on your PC. The terminal shows two IP addresses:<br><br>
+          • <code>127.0.0.1:5000</code> → only works on the PC itself<br>
+          • <code>192.168.x.x:5000</code> → works from any device on the same WiFi<br><br>
+          On this mobile page, enter the <strong>192.168.x.x:5000</strong> address in the Server Address box on the Analyze tab and tap <strong>Set</strong>.
+        </div>
+      </div>
+
+      <div class="page-footer">SENTRIX // twitter_roberta_v2 // <span>LOCAL NLP</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     BOTTOM NAV (mobile only)
+══════════════════════════════════════════ -->
+<nav class="bottom-nav">
+  <button class="nav-item active" id="nav-analyze" onclick="goPage('analyze',this)">
+    <span class="nav-icon">⚡</span>Analyze
+  </button>
+  <button class="nav-item" id="nav-phrases" onclick="goPage('phrases',this)">
+    <span class="nav-icon">📋</span>Phrases
+  </button>
+  <button class="nav-item" id="nav-about" onclick="goPage('about',this)">
+    <span class="nav-icon">ℹ️</span>About
+  </button>
+</nav>
+
+<script>
+// ── SERVER CONFIG ──────────────────────────────────────────────────────────
+let API = localStorage.getItem('sentrix_api') || 'http://localhost:5000';
+document.getElementById('serverInput').value = API;
+
+function saveServer() {
+  let v = document.getElementById('serverInput').value.trim().replace(/\/$/, '');
+  if (!v.startsWith('http')) v = 'http://' + v;
+  API = v;
+  localStorage.setItem('sentrix_api', API);
+  checkServer();
+}
+
+// ── NAVIGATION ──────────────────────────────────────────────────────────────
+function goPage(name, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+
+  // bottom nav
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const nb = document.getElementById('nav-' + name);
+  if (nb) nb.classList.add('active');
+
+  // desktop tabs
+  document.querySelectorAll('.dtab').forEach(t => t.classList.remove('active'));
+  if (el && el.classList.contains('dtab')) el.classList.add('active');
+  else {
+    document.querySelectorAll('.dtab').forEach(t => {
+      if (t.textContent.toLowerCase().includes(name.slice(0,3))) t.classList.add('active');
+    });
+  }
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── SERVER STATUS ───────────────────────────────────────────────────────────
+async function checkServer() {
+  const dot = document.getElementById('statusDot');
+  const lbl = document.getElementById('statusLabel');
+  const setup = document.getElementById('setupCard');
+  dot.className = 'status-dot';
+  lbl.className = 'status-label';
+  lbl.textContent = 'Connecting...';
+  try {
+    const r = await fetch(API + '/health', { signal: AbortSignal.timeout(3000) });
+    const d = await r.json();
+    if (d.model_loaded) {
+      dot.classList.add('online'); lbl.classList.add('online');
+      lbl.textContent = 'Online // ' + (d.num_labels || '?') + ' classes';
+      setup.classList.add('hidden');
+      serverOnline = true;
+    } else {
+      dot.classList.add('offline'); lbl.classList.add('offline');
+      lbl.textContent = 'Model not loaded';
+      setup.classList.remove('hidden'); serverOnline = false;
+    }
+  } catch {
+    dot.classList.add('offline'); lbl.classList.add('offline');
+    lbl.textContent = 'Offline — run app.py';
+    setup.classList.remove('hidden'); serverOnline = false;
+  }
+}
+
+// ── ANALYZE ─────────────────────────────────────────────────────────────────
+let serverOnline = false;
+let stats = { total:0, pos:0, neg:0, neu:0 };
+let history = [];
+
+function updateCC() {
+  document.getElementById('cc').textContent = document.getElementById('inputText').value.length;
+}
+function loadEx(text) {
+  document.getElementById('inputText').value = text;
+  updateCC();
+  // If on phrases page, go to analyze
+  goPage('analyze', null);
+  document.getElementById('inputText').focus();
+}
+
+async function analyze() {
+  const text = document.getElementById('inputText').value.trim();
+  if (!text) return;
+  if (!serverOnline) {
+    await checkServer();
+    if (!serverOnline) {
+      const lt = document.getElementById('loadTxt');
+      lt.textContent = '// ERROR: Server offline — check address above';
+      lt.classList.add('on');
+      setTimeout(() => lt.classList.remove('on'), 3000);
+      return;
+    }
+  }
+  setLoading(true);
+  try {
+    const r = await fetch(API + '/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    showResult(d);
+  } catch(e) {
+    document.getElementById('loadTxt').textContent = '// ERROR: ' + e.message;
+    setTimeout(() => setLoading(false), 2000);
+    return;
+  }
+  setLoading(false);
+}
+
+function showResult(d) {
+  stats.total++; 
+  if (d.sentiment==='POSITIVE') stats.pos++;
+  else if (d.sentiment==='NEGATIVE') stats.neg++;
+  else stats.neu++;
+  animN('st-total', stats.total); animN('st-pos', stats.pos);
+  animN('st-neg', stats.neg);     animN('st-neu', stats.neu);
+
+  // Sentiment
+  const sv = document.getElementById('sentVal');
+  sv.className = 'sent-val';
+  const conf = Math.max(d.pos||0, d.neg||0, d.neu||0);
+  const confStr = conf > 90 ? '🟢 HIGH' : conf > 70 ? '🔵 MODERATE' : '⚪ LOW';
+  if (d.sentiment==='POSITIVE') sv.classList.add('sv-pos');
+  else if (d.sentiment==='NEGATIVE') sv.classList.add('sv-neg');
+  else sv.classList.add('sv-neu');
+  sv.textContent = d.sentiment;
+  document.getElementById('sentConf').textContent = confStr + ' CONFIDENCE';
+
+  document.getElementById('langVal').textContent = d.lang || 'EN 🇬🇧';
+  const em = document.getElementById('emojiVal');
+  em.textContent = d.emojis && d.emojis.length ? d.emojis.join(' ') : 'None detected';
+
+  setTimeout(() => {
+    setBar('barP','pctP', d.pos||0);
+    setBar('barN','pctN', d.neg||0);
+    setBar('barU','pctU', d.neu||0);
+  }, 80);
+
+  const ac = document.getElementById('aspectChips');
+  ac.innerHTML = '';
+  (d.aspects||[]).forEach(a => {
+    const c = document.createElement('span'); c.className='chip'; c.textContent=a; ac.appendChild(c);
+  });
+  if (!d.aspects||!d.aspects.length)
+    ac.innerHTML='<span style="color:var(--fg-muted);font-size:11px;">None detected</span>';
+
+  document.getElementById('analysisText').textContent = d.analysis || '';
+
+  const res = document.getElementById('results');
+  res.style.display='none'; void res.offsetHeight;
+  res.style.display='block'; res.classList.add('show');
+
+  addHist(d.raw_text || document.getElementById('inputText').value, d.sentiment);
+}
+
+function setBar(bId, pId, v) {
+  v = Math.min(Math.max(v,0),100);
+  document.getElementById(bId).style.width = v+'%';
+  document.getElementById(pId).textContent = v.toFixed(1)+'%';
+}
+
+function addHist(text, sentiment) {
+  history.unshift({text, sentiment});
+  if (history.length > 8) history.pop();
+  const list = document.getElementById('histList');
+  list.innerHTML = '';
+  history.forEach(h => {
+    const cls = h.sentiment==='POSITIVE'?'hb-p':h.sentiment==='NEGATIVE'?'hb-n':'hb-u';
+    const safe = h.text.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    list.innerHTML += `<div class="hist-item" onclick="loadEx('${safe}')">
+      <span class="hist-txt">&rsaquo; ${h.text}</span>
+      <span class="hist-badge ${cls}">${h.sentiment}</span>
+    </div>`;
+  });
+  document.getElementById('histSection').style.display='block';
+}
+
+function setLoading(on) {
+  document.getElementById('loadBar').classList.toggle('on', on);
+  document.getElementById('loadTxt').classList.toggle('on', on);
+  if (on) document.getElementById('loadTxt').textContent = '// Running neural inference on device...';
+  document.getElementById('analyzeBtn').disabled = on;
+}
+
+function clearAll() {
+  document.getElementById('inputText').value = '';
+  document.getElementById('cc').textContent = '0';
+  document.getElementById('results').classList.remove('show');
+  setTimeout(() => document.getElementById('results').style.display='none', 300);
+  setLoading(false);
+}
+
+function animN(id, target) {
+  const el = document.getElementById(id);
+  const start = parseInt(el.textContent)||0;
+  let i=0;
+  const t = setInterval(() => {
+    i++; el.textContent = Math.round(start+(target-start)*(i/20));
+    if (i>=20) { el.textContent=target; clearInterval(t); }
+  }, 18);
+}
+
+// ── PHRASES DATA ──────────────────────────────────────────────────────────
+const PHRASES = {
+  pos: [
+    "The new phone camera is absolutely stunning at night 📸😍",
+    "Absolutely love this product! Best purchase I made all year 🎉❤️",
+    "This laptop is blazing fast, totally worth every penny 💯",
+    "Customer service was incredible, solved my issue in minutes 🙌",
+    "Battery life on this phone is unbelievable, lasts 2 days easily",
+    "Best headphones I have ever owned, sound quality is pure bliss 🎧",
+    "This app has completely transformed how I work, 10 out of 10",
+    "Amazing camera, superb display, this phone is a dream 😍",
+    "Super fast delivery, arrived within 24 hours 🚀",
+    "Feels very premium in hand, solid build and great materials",
+  ],
+  neg: [
+    "Battery is terrible, drains in 2 hours 😡 not worth the price",
+    "Worst product I have ever bought, broke after one day 💔",
+    "Complete waste of money, do not buy this garbage",
+    "The screen cracked on its own after a week, terrible quality",
+    "Customer support is useless, waited 3 hours and no response 😤",
+    "This is a total scam, never received my order 😠",
+    "Absolutely disgusting quality, looks nothing like the photos",
+    "The app crashes every 5 minutes, pathetic development 😡",
+    "Delivery took 3 weeks, packaging was damaged 😤",
+    "Returned it immediately, worst purchase decision of my life",
+  ],
+  neu: [
+    "This product is okay I guess, nothing special but works fine",
+    "It does what it says, nothing more nothing less",
+    "Received the package today, will update after testing",
+    "Average product for the price, met basic expectations",
+    "Not bad, not great either, pretty standard quality",
+    "Packaging was good, product is functional",
+    "The size is slightly smaller than I expected, otherwise fine",
+    "I have used better and worse, it is acceptable",
+    "Delivery took 5 days, product is as described",
+    "It works but I expected more features at this price range",
+  ],
+  multi: [
+    { text: "Ce produit est incroyable! Très satisfait de la qualité.", lang: "FR 🇫🇷" },
+    { text: "La batterie est terrible, ne dure pas plus de 2 heures. Déçu.", lang: "FR 🇫🇷" },
+    { text: "¡Producto increíble! La calidad es excelente, muy satisfecho 😍", lang: "ES 🇪🇸" },
+    { text: "Muy malo, se rompió al primer día. No lo recomiendo para nada 👎", lang: "ES 🇪🇸" },
+    { text: "Sehr gutes Produkt, bin sehr zufrieden mit der Qualität! ⭐", lang: "DE 🇩🇪" },
+    { text: "Schreckliches Produkt, völlig kaputt nach einem Tag 💔", lang: "DE 🇩🇪" },
+    { text: "Produto incrível, qualidade muito boa! Super recomendo 🎉", lang: "PT 🇧🇷" },
+    { text: "Péssimo produto, quebrou no primeiro dia. Não recomendo 👎", lang: "PT 🇧🇷" },
+    { text: "Livraison rapide et qualité excellente, je recommande vivement! 🌟", lang: "FR 🇫🇷" },
+    { text: "¡La cámara es espectacular, la mejor que he tenido en años! 📸", lang: "ES 🇪🇸" },
+  ],
+  emoji: [
+    "Product arrived 📦 and it is 🔥🔥🔥 totally worth it 💯",
+    "This thing is trash 💩 waste of money 😤 never buying again 👎",
+    "LOVE LOVE LOVE this product 😍🥰❤️💯 absolute perfection 🌟",
+    "Broke on day 1 😭 returned immediately 😡 what a disaster 💔😤",
+    "Camera test 📸 → results 🤩🤩🤩 absolutely incredible shots!",
+    "Ordered 5 days ago 📦 still waiting 😐 no tracking update 🤔",
+    "The quality 😍✨ the packaging 🎁 the speed 💨 everything perfect",
+    "Ugh 😒 another disappointment 😞 expected so much more 💔",
+    "Just got my delivery 😊 looks great so far fingers crossed 🤞",
+    "Hmm not sure about this one 🤔 maybe it gets better with time",
+  ],
+  aspect: [
+    "The camera on this phone is absolutely next level 📸 stunning shots",
+    "Front camera is great but the rear camera is blurry and disappointing",
+    "Battery lasts all day easily, very impressed with battery life",
+    "Battery is the only weak point, drains too fast under heavy use",
+    "The display is gorgeous, colors are vivid and sharp 😍",
+    "Screen brightness is poor outdoors, very hard to see in sunlight",
+    "Exceptional value for the price, way better than competitors",
+    "Overpriced for what you get, not worth paying this much",
+    "Super fast delivery, arrived within 24 hours, very impressed 🚀",
+    "Delivery took 3 weeks, packaging was damaged when it arrived 😤",
+    "Sturdy construction, survived a drop from table height no damage",
+    "Cheap plastic build, feels like it will break any moment",
+  ],
+  mixed: [
+    "Camera is excellent but battery life is a big disappointment",
+    "Great product overall but the delivery was extremely slow 😐",
+    "Love the design but the performance is underwhelming for the price",
+    "Not perfect but good enough for daily use, acceptable quality",
+    "Started off great but stopped working after 2 weeks, so frustrated",
+    "The price is high but the quality justifies it, worth the investment",
+    "Good camera, bad battery, average display — mixed feelings overall",
+    "Decent product with a few flaws, would recommend with reservations",
+  ],
+};
+
+function buildPhrases() {
+  const make = (list, containerId, isMulti=false) => {
+    const c = document.getElementById(containerId);
+    list.forEach(item => {
+      const text = isMulti ? item.text : item;
+      const lang = isMulti ? item.lang : null;
+      const div = document.createElement('div');
+      div.className = 'phrase-item';
+      div.onclick = () => loadEx(text);
+      div.innerHTML = `
+        <span class="phrase-txt">${lang ? `<span class="lang-tag">${lang}</span>` : ''}${text}</span>
+        <span class="phrase-use">↗ Use</span>
+      `;
+      c.appendChild(div);
+    });
+  };
+  make(PHRASES.pos,    'cat-pos');
+  make(PHRASES.neg,    'cat-neg');
+  make(PHRASES.neu,    'cat-neu');
+  make(PHRASES.multi,  'cat-multi', true);
+  make(PHRASES.emoji,  'cat-emoji');
+  make(PHRASES.aspect, 'cat-aspect');
+  make(PHRASES.mixed,  'cat-mixed');
+}
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  buildPhrases();
+  checkServer();
+  setInterval(checkServer, 20000);
+  document.getElementById('inputText').addEventListener('keydown', e => {
+    if (e.key==='Enter' && (e.ctrlKey||e.metaKey)) analyze();
+  });
+});
+</script>
+</body>
+</html>
