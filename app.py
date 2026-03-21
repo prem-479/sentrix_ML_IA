@@ -11,12 +11,26 @@ import torch.nn.functional as F
 import re, os, json, logging
 
 logging.basicConfig(level=logging.INFO)
+# ─── DEVICE AUTO-DETECTION ───────────────────────────────────────────────────
+def get_device():
+    """Automatically selects the best available compute device."""
+    if torch.cuda.is_available():
+        logger.info("Hardware: NVIDIA GPU (CUDA)")
+        return torch.device("cuda")
+    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        logger.info("Hardware: Apple Silicon (MPS)")
+        return torch.device("mps")
+    logger.info("Hardware: CPU")
+    return torch.device("cpu")
+
+DEVICE = get_device()
+
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 CORS(app)
 
-MODEL_PATH = "./twitter_roberta_v2"
+MODEL_PATH = os.path.join(".", "twitter_roberta_v2")
 
 # ─── STRONG NEGATIVE SIGNAL WORDS ─────────────────────────────────────────────
 # When model confidence is low (<65%) and these appear, override to NEGATIVE.
@@ -77,8 +91,9 @@ def load_model():
         model = AutoModelForSequenceClassification.from_pretrained(
             MODEL_PATH, use_safetensors=True
         )
+        model.to(DEVICE)
         model.eval()
-        logger.info("✅ Model loaded successfully!")
+        logger.info(f"✅ Model loaded on {DEVICE}")
         return True
     except Exception as e:
         logger.error(f"❌ Model load failed: {e}")
@@ -205,7 +220,8 @@ def health():
         "model_loaded": model is not None,
         "model_path": MODEL_PATH,
         "num_labels": len(LABELS),
-        "labels": LABELS
+        "labels": LABELS,
+        "device": str(DEVICE)
     })
 
 @app.route("/analyze", methods=["POST"])
@@ -223,6 +239,7 @@ def analyze():
 
     processed = preprocess_tweet(text)
     inputs = tokenizer(processed, return_tensors="pt", truncation=True, max_length=128)
+    inputs = {k: v.to(DEVICE) for k, v in inputs.items()}
 
     with torch.no_grad():
         logits = model(**inputs).logits
@@ -268,6 +285,7 @@ def batch_analyze():
     for text in data["texts"][:20]:
         text = text.strip()[:512]
         inputs = tokenizer(preprocess_tweet(text), return_tensors="pt", truncation=True, max_length=128)
+        inputs = {k: v.to(DEVICE) for k, v in inputs.items()}
         with torch.no_grad():
             probs = F.softmax(model(**inputs).logits, dim=-1)[0].tolist()
         sentiment, pos, neg, neu = build_scores(probs)
@@ -294,7 +312,8 @@ if __name__ == "__main__":
     else:
         load_model()
 
-    print(f"\n  API:      http://localhost:5000")
+    print(f"\n  Device:   {DEVICE}")
+    print(f"  API:      http://localhost:5000")
     print(f"  Health:   http://localhost:5000/health")
     print(f"  Frontend: open index.html in browser")
     print("="*55 + "\n")
