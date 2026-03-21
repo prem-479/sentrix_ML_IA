@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)
 
-MODEL_PATH = os.path.join(".", "twitter_roberta_v2")
+MODEL_PATH = "prem79/sentrix_roberta_V2"  # Hugging Face Hub — downloads automatically on first run
 
 # ─── STRONG NEGATIVE SIGNAL WORDS ─────────────────────────────────────────────
 # When model confidence is low (<65%) and these appear, override to NEGATIVE.
@@ -83,7 +83,7 @@ LABELS = []
 
 def load_model():
     global tokenizer, model, LABELS
-    logger.info(f"Loading model from: {os.path.abspath(MODEL_PATH)}")
+    logger.info(f"Loading model: {MODEL_PATH} (Hugging Face Hub or local cache)")
     try:
         LABELS = get_labels()
         logger.info(f"Using {len(LABELS)} output classes: {LABELS}")
@@ -218,7 +218,7 @@ def health():
     return jsonify({
         "status": "online",
         "model_loaded": model is not None,
-        "model_path": MODEL_PATH,
+        "model_source": MODEL_PATH,
         "num_labels": len(LABELS),
         "labels": LABELS,
         "device": str(DEVICE)
@@ -306,11 +306,10 @@ if __name__ == "__main__":
     print("  twitter_roberta_v2 — Local Deployment")
     print("="*55)
 
-    if not os.path.exists(MODEL_PATH):
-        print(f"\n⚠️  Model folder not found: {MODEL_PATH}")
-        print(f"   Expected: {os.path.abspath(MODEL_PATH)}\n")
-    else:
-        load_model()
+    print(f"\n  Model source: Hugging Face Hub ({MODEL_PATH})")
+    print(f"  First run will download ~500MB and cache locally.")
+    print(f"  Subsequent runs load from cache instantly.\n")
+    load_model()
 
     print(f"\n  Device:   {DEVICE}")
     print(f"  API:      http://localhost:5000")
