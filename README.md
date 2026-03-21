@@ -1,6 +1,6 @@
-# SENTRIX — Sentiment Analysis System
+# SENTRIX - Sentiment Analysis System
 
-A hybrid-cloud sentiment analysis deployment. The model weights are hosted on Hugging Face Hub and downloaded automatically on first run. The frontend is hosted on GitHub Pages. The backend runs locally on any machine with Python installed — no manual model file transfers required.
+A finetuned RoBERTa model running locally on your machine, served through a Flask backend, with a mobile-responsive frontend hosted on GitHub Pages. The model is hosted on Hugging Face Hub and downloads automatically on first run. No zip files, no USB sticks, no manual weight transfers between machines.
 
 Live Frontend: https://prem-479.github.io/sentrix_ML_IA/
 Model on Hugging Face: https://huggingface.co/prem79/sentrix_roberta_V2
@@ -27,13 +27,13 @@ Model on Hugging Face: https://huggingface.co/prem79/sentrix_roberta_V2
 
 ## Overview
 
-This project demonstrates three core NLP tasks applied to user-generated text:
+This project implements three core NLP tasks on social media text:
 
-- **Aspect-Based Sentiment Analysis** — Extracts specific product/service aspects (camera, battery, price) and identifies sentiment toward each.
-- **Multilingual Sentiment Analysis** — Detects and processes text in English, French, Spanish, German, and Portuguese using the cross-lingual capabilities of the RoBERTa architecture.
-- **Emoji-Aware Sentiment Analysis** — Extracts emoji signals from input text and incorporates them as supplementary sentiment indicators alongside the model's confidence scores.
+- **Aspect-Based Sentiment Analysis** - The model does not just return "negative." It identifies *what* is negative. Battery life? Camera? Delivery? The aspect extraction surfaces that automatically.
+- **Multilingual Sentiment Analysis** - Handles English, French, Spanish, German, and Portuguese. The base model's Twitter pretraining gives it genuine cross-lingual capability without any language-specific fine-tuning.
+- **Emoji-Aware Sentiment Analysis** - Detects and surfaces emojis as separate sentiment signals. "Great product" and "great product" followed by three skull emojis carry different weight, and the pipeline surfaces that distinction.
 
-The model (`prem79/sentrix_roberta_V2`) is a fine-tuned RoBERTa checkpoint hosted on Hugging Face Hub. The `transformers` library downloads and caches it automatically — no manual file handling required.
+The model (`prem79/sentrix_roberta_V2`) is fine-tuned from Cardiff NLP's twitter-roberta checkpoint, trained on Kaggle with GPU acceleration, achieving 88.21% accuracy on 40,000 test samples. It runs entirely on your device with no cloud inference costs.
 
 ---
 
@@ -45,46 +45,46 @@ Browser / Mobile Device
         | HTTP (local network)
         v
 +---------------------------+
-|   GitHub Pages            |  index.html  (static frontend)
+|   GitHub Pages            |  index.html  (static frontend, zero build step)
 |   prem-479.github.io      |
 +---------------------------+
         |
-        | POST /analyze  (configured IP)
+        | POST /analyze
         v
 +---------------------------+
-|   Flask REST API          |  app.py  (runs on your machine)
+|   Flask REST API          |  app.py  (runs locally on your machine)
 |   localhost:5000          |
 +---------------------------+
         |
         v
 +---------------------------+
-|   HuggingFace Hub         |  prem79/sentrix_roberta_V2
-|   (first run only)        |  downloaded and cached locally
+|   Hugging Face Hub        |  prem79/sentrix_roberta_V2
+|   (first run only)        |  downloads once, cached locally on every run after
 +---------------------------+
         |
         v
 +---------------------------+
 |   PyTorch Inference       |  CPU / CUDA / Apple MPS
-|   twitter-roberta-base    |
+|   RoBERTa-base            |  inference engine
 +---------------------------+
 ```
 
-**Model caching behavior:**
+Model caching behavior:
 
-| Run | Behavior |
+| Run | What happens |
 |---|---|
-| First run | Downloads ~500MB from Hugging Face Hub, saves to local cache |
-| Subsequent runs | Loads from cache instantly, no network required |
-| Offline (after first run) | Works fully offline from the local cache |
+| First run | Downloads ~500MB from Hugging Face, saves to your machine's cache |
+| Every run after that | Loads from cache in seconds, no internet required |
+| Offline after first run | Works completely offline, the model is on your machine |
 
 ---
 
 ## Requirements
 
 - Python 3.9 or higher
-- Internet connection on first run only (to download the model)
+- Internet connection on the first run only, after that you are free
 
-Python packages (`requirements.txt`):
+Python packages in `requirements.txt`:
 
 ```
 flask>=3.0.0
@@ -94,40 +94,42 @@ transformers>=4.35.0
 safetensors>=0.4.0
 ```
 
-No model files need to be copied or moved between machines. The `transformers` library handles all downloading and caching automatically.
+That is it. No model files to download manually. No zip files. No Google Drive links. The `transformers` library handles all of that for you.
 
 ---
 
 ## Quickstart
 
-This is all you need to do on any machine, including a new Mac, Windows PC, or another Linux system:
+This is the part where most READMEs give you fifteen steps and a warning about system dependencies. This one does not.
 
 ```bash
-# 1. Clone the repository
+# clone the repo
 git clone https://github.com/prem-479/sentrix_ML_IA.git
 cd sentrix_ML_IA
 
-# 2. Create virtual environment
+# set up the environment
 python3 -m venv venv
 source venv/bin/activate          # Linux / macOS
-# .\venv\Scripts\activate         # Windows PowerShell
+# .\venv\Scripts\activate         # Windows, different syntax, same result
 
-# 3. Install dependencies (CPU-only PyTorch — smaller download)
+# install dependencies
+# cpu-only torch is smaller and unless you have an NVIDIA card it is the same speed
 pip install torch --index-url https://download.pytorch.org/whl/cpu
 pip install -r requirements.txt
 
-# 4. Start the server
+# start the server
 python3 app.py
 ```
 
-On first run, the model downloads automatically:
+First run output will look like this:
 
 ```
 Model source: Hugging Face Hub (prem79/sentrix_roberta_V2)
 First run will download ~500MB and cache locally.
 Subsequent runs load from cache instantly.
 
-INFO: Loading model: prem79/sentrix_roberta_V2 (Hugging Face Hub or local cache)
+INFO: Hardware: CPU
+INFO: Loading model: prem79/sentrix_roberta_V2
 Downloading model.safetensors: 100%  499M/499M
 INFO: Model loaded on cpu
 
@@ -136,7 +138,7 @@ INFO: Model loaded on cpu
   Frontend: open index.html in browser
 ```
 
-Open https://prem-479.github.io/sentrix_ML_IA/ and enter your machine's IP in the Server Address field.
+Go to https://prem-479.github.io/sentrix_ML_IA/, enter your machine's IP in the Server Address box, and you are done.
 
 ---
 
@@ -158,71 +160,66 @@ cd sentrix_ML_IA
 python app.py
 ```
 
-The server starts on `0.0.0.0:5000` — accessible from the host machine at `http://localhost:5000` and from other devices on the same network at `http://192.168.x.x:5000`.
+The server runs on `0.0.0.0:5000`. That means localhost on your machine and `192.168.x.x:5000` from any other device on the same network. The terminal will show you both. Use the `192.168.x.x` one for your phone.
 
-To stop the server: `Ctrl + C`
+Stop the server with `Ctrl + C`.
 
 ---
 
 ## Deployment
 
-This project uses a three-layer hybrid deployment:
+Three layers. Each one does exactly one job.
 
 ```
-Layer 1: Model weights    — Hugging Face Hub  (prem79/sentrix_roberta_V2)
-Layer 2: Frontend         — GitHub Pages      (prem-479.github.io/sentrix_ML_IA)
-Layer 3: Backend/inference — Your local machine (python3 app.py)
+Layer 1: Model weights    - Hugging Face Hub  (prem79/sentrix_roberta_V2)
+Layer 2: Frontend         - GitHub Pages      (prem-479.github.io/sentrix_ML_IA)
+Layer 3: Backend/inference - Your laptop      (python3 app.py)
 ```
 
 ---
 
-### Layer 1 — Model on Hugging Face Hub
+### Layer 1 - Model on Hugging Face Hub
 
-The model is already uploaded at `prem79/sentrix_roberta_V2`. The `app.py` backend references it by this Hub ID:
+The model is at `prem79/sentrix_roberta_V2`. The `app.py` references it with one line:
 
 ```python
 MODEL_PATH = "prem79/sentrix_roberta_V2"
 ```
 
-The `transformers` library resolves this string automatically — if the model is not in the local cache, it downloads it from Hugging Face. If it is cached, it loads from disk. No code changes are needed when moving to a new machine.
+When you run `app.py` on a new machine, `transformers` sees that string, goes to Hugging Face, downloads the model, caches it, and loads it. Next time it skips the download. This is the whole point of hosting it on the Hub - you never have to email yourself a zip file again.
 
-The local cache location is:
+Cache locations in case you need to find or delete it:
 
-| Platform | Cache Path |
+| Platform | Cache path |
 |---|---|
 | Linux | `~/.cache/huggingface/hub/` |
 | macOS | `~/.cache/huggingface/hub/` |
-| Windows | `C:\Users\username\.cache\huggingface\hub\` |
+| Windows | `C:\Users\YourName\.cache\huggingface\hub\` |
 
 ---
 
-### Layer 2 — Frontend on GitHub Pages
+### Layer 2 - Frontend on GitHub Pages
 
-The frontend is a single static HTML file (`index.html`) with no build step.
+`index.html` is a single static file with no build step, no npm install, and no bundler configuration. Push it to the repo, GitHub Pages serves it.
 
-#### Updating and redeploying
+Updating the frontend:
 
 ```bash
-# Edit index.html, then:
 git add index.html
-git commit -m "Update frontend"
+git commit -m "update frontend"
 git push
 ```
 
-GitHub Pages automatically redeploys within 1-2 minutes of every push to `main`.
+GitHub Pages redeploys within a minute.
 
-#### Enable GitHub Pages (if setting up a new fork)
+Setting up Pages on a new fork if needed:
 
-1. Go to repository **Settings** > **Pages**
-2. Under Source, select **Deploy from a branch**
-3. Set branch to `main`, folder to `/ (root)`
-4. Click **Save**
+1. Repository Settings > Pages
+2. Source: Deploy from a branch
+3. Branch: main, Folder: / (root)
+4. Save
 
-The site will be published at `https://your-username.github.io/your-repo-name/`.
-
-#### .gitignore
-
-The following should not be committed:
+Your `.gitignore` should look like this. Do not commit your venv or pycache, nobody wants those:
 
 ```
 venv/
@@ -230,51 +227,53 @@ __pycache__/
 *.pyc
 ```
 
-Model files are not stored in this repository — they live on Hugging Face Hub.
+The model files are not in this repo. They live on Hugging Face. That is the whole point.
 
 ---
 
-### Layer 3 — Backend on Your Machine
+### Layer 3 - Backend on Your Machine
 
-The backend must be running locally whenever you use the frontend. It cannot be deployed to GitHub Pages or any static host.
+The backend cannot go on GitHub Pages. GitHub Pages is a static file host. It does not run Python. This is a common source of confusion and the answer is always the same: run `python3 app.py` on your laptop before you open the frontend.
 
-For a permanent production deployment, the backend would need a server (VPS, AWS EC2, etc.) with a domain and SSL certificate. This is outside the scope of a local demo. For presentation purposes, running `python3 app.py` on a laptop connected to the same WiFi as the demo device is sufficient.
+For a real production deployment you would need a VPS, a domain, and an SSL certificate, at which point this stops being a student project and starts being infrastructure. That is out of scope here.
 
 ---
 
-### Serving the Frontend Locally (Recommended for Presentations)
+### Serving Locally for Presentations (Important)
 
-GitHub Pages is served over HTTPS. Browsers block requests from HTTPS pages to plain HTTP backends (Mixed Content policy). To avoid this during a demo:
+GitHub Pages runs on HTTPS. Your backend runs on HTTP. Browsers block HTTP requests from HTTPS pages. This is called Mixed Content and it will make the status indicator stay red on the GitHub Pages URL.
+
+The fix is simple: do not use the GitHub Pages URL during the demo. Serve the frontend locally instead.
 
 ```bash
-# In the project folder (venv does not need to be active)
+# terminal 1: backend
+source venv/bin/activate
+python3 app.py
+
+# terminal 2: frontend
 python3 -m http.server 8080
 ```
 
-Then open `http://localhost:8080` instead of the GitHub Pages URL. Requests from `http` to `http://localhost:5000` are not blocked.
+Open `http://localhost:8080` in your browser. Status goes green. Everything works.
 
-For mobile access on the same network:
+For mobile on the same WiFi:
 
 ```
-Frontend:  http://192.168.x.x:8080
-Backend:   http://192.168.x.x:5000   (enter this in Server Address field)
+Frontend on phone:  http://192.168.x.x:8080
+Server Address box: http://192.168.x.x:5000
 ```
 
 ---
 
 ## Mobile Access
 
-1. Run `python3 app.py` on your machine.
-2. The terminal displays two addresses — use the `192.168.x.x` one:
-   ```
-   Running on http://127.0.0.1:5000      <- host machine only
-   Running on http://192.168.x.x:5000    <- any device on the same network
-   ```
-3. On your phone, open `http://192.168.x.x:8080` (local server) or the GitHub Pages URL.
-4. In the **Server Address** field on the Analyze tab, enter `http://192.168.x.x:5000` and tap **Set**.
-5. The status indicator turns green when connected.
+1. Run `python3 app.py`. The terminal shows two addresses.
+2. The `192.168.x.x:5000` one works from any device on the same network.
+3. Open the frontend on your phone.
+4. Paste `http://192.168.x.x:5000` into the Server Address field. Tap Set.
+5. Green status. You are connected.
 
-The configured address is saved to `localStorage` and persists between sessions.
+The address saves to localStorage. You only have to do this once per device.
 
 ---
 
@@ -282,7 +281,7 @@ The configured address is saved to `localStorage` and persists between sessions.
 
 ### GET /health
 
-Returns server, model, and hardware status.
+Check if the server and model are running.
 
 ```json
 {
@@ -299,13 +298,11 @@ Returns server, model, and hardware status.
 
 ### POST /analyze
 
-Analyzes a single text input.
+Send text, get sentiment.
 
 **Request:**
 ```json
-{
-  "text": "The camera is absolutely stunning at night"
-}
+{ "text": "The camera is absolutely stunning at night" }
 ```
 
 **Response:**
@@ -318,7 +315,7 @@ Analyzes a single text input.
   "lang": "EN",
   "aspects": ["camera", "night"],
   "emojis": [],
-  "analysis": "Very high confidence positive sentiment (95.1%). Key aspects: camera, night. Subject expresses satisfaction or approval.",
+  "analysis": "Very high confidence positive sentiment (95.1%). Key aspects: camera, night.",
   "raw_text": "The camera is absolutely stunning at night",
   "debug": {
     "num_labels": 3,
@@ -329,7 +326,7 @@ Analyzes a single text input.
 }
 ```
 
-**curl example:**
+**curl:**
 ```bash
 curl -X POST http://localhost:5000/analyze \
   -H "Content-Type: application/json" \
@@ -340,29 +337,12 @@ curl -X POST http://localhost:5000/analyze \
 
 ### POST /batch
 
-Analyzes up to 20 texts in a single request.
+Up to 20 texts at once. Same format per item.
 
-**Request:**
-```json
-{
-  "texts": [
-    "Great product, highly recommend",
-    "Terrible quality, broke in one day",
-    "It is okay, nothing special"
-  ]
-}
-```
-
-**Response:**
-```json
-{
-  "count": 3,
-  "results": [
-    { "sentiment": "POSITIVE", "pos": 91.2, "neg": 6.1, "neu": 2.7 },
-    { "sentiment": "NEGATIVE", "pos": 3.4,  "neg": 95.1, "neu": 1.5 },
-    { "sentiment": "NEUTRAL",  "pos": 22.1, "neg": 18.3, "neu": 59.6 }
-  ]
-}
+```bash
+curl -X POST http://localhost:5000/batch \
+  -H "Content-Type: application/json" \
+  -d '{"texts": ["Great quality", "Terrible experience", "It is fine I guess"]}'
 ```
 
 ---
@@ -371,65 +351,56 @@ Analyzes up to 20 texts in a single request.
 
 ### Preprocessing
 
-| Pattern | Replacement | Reason |
+Before anything reaches the model, two substitutions happen:
+
+| Pattern | Replacement | Why |
 |---|---|---|
-| URLs (`http://...`) | `http` | Standard RoBERTa tweet token |
-| Mentions (`@username`) | `@user` | Standard RoBERTa tweet token |
+| URLs | `http` | Standard RoBERTa tweet token |
+| @mentions | `@user` | Standard RoBERTa tweet token |
+
+The model was pretrained expecting these tokens. Skipping this step hurts accuracy on anything with links or mentions.
 
 ### Aspect Extraction
 
-Rule-based stopword filtering returns up to 4 content words representing product or service aspects (camera, battery, display, price, delivery).
+Stopword filtering pulls up to four content words from the input. These become the aspect chips in the UI. It is not spaCy, it is not a dependency parser, it is a stopword list - and for the purpose of highlighting what the review is about, it works well enough.
 
 ### Language Detection
 
-Heuristic regex matching against closed-class vocabulary:
-
-| Language | Example trigger words |
-|---|---|
-| French | `très`, `qualité`, `satisfait`, `incroyable` |
-| Spanish | `muy`, `producto`, `calidad`, `gracias` |
-| German | `sehr`, `gut`, `danke`, `schlecht` |
-| Portuguese | `muito`, `produto`, `qualidade`, `bom` |
+Pattern matching against closed-class vocabulary. If the text has enough French or Spanish function words, it gets flagged. This does not affect the model's inference - the base model handles cross-lingual input natively. It is purely for displaying the correct flag in the UI.
 
 ### Lexical Override
 
-When model confidence is below 65% and the input contains unambiguous hostile vocabulary (profanity, explicit threats), the classification is overridden to NEGATIVE. The response includes `"override_applied": true` and the analysis string notes the trigger words. This handles cases where the model — trained on casual Twitter data — may misclassify aggressive language as positive.
+When model confidence is below 65% and the input contains explicit hostile language, the classification flips to NEGATIVE. The `debug.override_applied` field in the response tells you when this happened. This exists because RoBERTa was trained on casual Twitter where people use profanity affectionately, and sometimes the model genuinely cannot tell the difference. The override can.
 
 ---
 
 ## Cross-Platform Notes
 
-| Platform | Activate virtual environment |
+| Platform | Activate venv |
 |---|---|
 | Linux / macOS | `source venv/bin/activate` |
 | Windows PowerShell | `.\venv\Scripts\activate` |
 | Windows CMD | `venv\Scripts\activate.bat` |
 
-**Model path** — `app.py` uses the Hugging Face Hub ID `"prem79/sentrix_roberta_V2"` which is OS-agnostic. The `transformers` library resolves caching paths correctly on all platforms.
+Do not move your `venv` folder between machines. It will not work. Create a new one on each machine with `python3 -m venv venv`. This takes two minutes and saves hours of debugging path issues.
 
-**Windows Firewall** — On first run, Windows prompts to allow Python through the firewall. Both Private and Public network boxes must be checked for local network access to work.
+**Windows Firewall** - on first run, Windows will ask if Python can access the network. Allow both Private and Public. If you click no by accident, the mobile connection will fail silently and you will spend twenty minutes wondering why.
 
-**macOS Firewall** — macOS may prompt to allow incoming network connections. Click Allow.
+**macOS Firewall** - same deal, click Allow when prompted.
 
 ---
 
 ## Hardware Acceleration
 
-`app.py` automatically selects the best available compute device at startup:
+The server auto-detects the best available device at startup. You do not configure anything.
 
-| Platform | Hardware | Device | Notes |
-|---|---|---|---|
-| Linux / Windows | NVIDIA GPU | CUDA | Fastest |
-| macOS | M1 / M2 / M3 | MPS | Fast — Metal Performance Shaders |
-| Any | CPU only | CPU | Default fallback |
+| Machine | Hardware | Device used |
+|---|---|---|
+| Linux / Windows with NVIDIA GPU | CUDA | `cuda` - fastest |
+| Mac with M1 / M2 / M3 chip | Metal | `mps` - fast |
+| Anything else | CPU | `cpu` - works fine, just slower |
 
-The selected device is reported in the startup banner and in the `/health` response.
-
-To force CPU inference:
-```python
-# In app.py, after the get_device() call:
-DEVICE = torch.device("cpu")
-```
+For a 500MB sentiment model on CPU you are looking at about 0.2-0.5 seconds per inference. That is fine for a demo. If you need it faster, get a GPU or use a smaller model.
 
 ---
 
@@ -438,36 +409,34 @@ DEVICE = torch.device("cpu")
 ```
 sentrix_ML_IA/
 |
-|-- app.py              # Flask backend — model inference, API routes, device detection
-|-- index.html          # Frontend — mobile-responsive single-file app (GitHub Pages)
-|-- requirements.txt    # Python dependencies
+|-- app.py              # Flask backend - inference, API, device detection, lexical override
+|-- index.html          # Frontend - everything in one file, no build step required
+|-- requirements.txt    # Python dependencies, five lines
 |-- README.md           # This file
 |
-|-- venv/               # Virtual environment — do not commit, recreate on each machine
+|-- venv/               # Do not commit this. Do not transfer this between machines.
 ```
 
-The model weights are not stored in this repository. They are hosted at:
-`https://huggingface.co/prem79/sentrix_roberta_V2`
+Model weights are not in this repository. They are at `huggingface.co/prem79/sentrix_roberta_V2` and download automatically on first run.
 
 ---
 
 ## Troubleshooting
 
-| Problem | Cause | Solution |
+| Problem | Cause | Fix |
 |---|---|---|
-| `ModuleNotFoundError: flask` | Running outside virtual environment | Activate venv before running |
-| `OSError: prem79/sentrix_roberta_V2 is not a local folder` | No internet, model not cached yet | Connect to internet for first run to download the model |
-| `IndexError: index 2 out of bounds` | Code assumed 3 classes, model has 2 | Labels are auto-detected from `config.json` in current version |
-| Model not loading | Wrong Hub ID or repository is private | Verify at `huggingface.co/prem79/sentrix_roberta_V2` that the repo is public |
-| Mobile cannot connect | Firewall blocking port 5000 | Allow Python through firewall; confirm both devices on same WiFi |
-| Status stays Offline on GitHub Pages | Mixed Content block (HTTPS to HTTP) | Serve locally with `python3 -m http.server 8080`, open `http://localhost:8080` |
-| Works on PC but not on phone | Phone loading GitHub Pages URL (HTTPS) | Use `http://192.168.x.x:8080` on the phone instead |
-| Download very slow on first run | 500MB model over network | Normal — subsequent runs load from cache instantly |
-| `Disk quota exceeded` during install | Full GPU PyTorch too large | Use: `pip install torch --index-url https://download.pytorch.org/whl/cpu` |
-| Wrong language detected | Ambiguous vocabulary | Known limitation of heuristic detection; does not affect sentiment scores |
-| Low confidence on profanity | Model trained on casual Twitter data | Lexical override handles this automatically |
+| `ModuleNotFoundError: flask` | You forgot to activate the venv | `source venv/bin/activate` then try again |
+| `OSError: not a local folder and not a valid model identifier` | First run with no internet | Connect to the internet once so the model downloads and caches |
+| Model repo says private or 404 | Repo visibility changed | Go to `huggingface.co/prem79/sentrix_roberta_V2` and make it public |
+| Status indicator stays red on GitHub Pages | Mixed Content block, HTTPS cannot call HTTP | Use `python3 -m http.server 8080` and open `http://localhost:8080` instead |
+| Works on your laptop but not on your phone | Phone is loading the GitHub Pages HTTPS URL | Give the phone `http://192.168.x.x:8080` instead |
+| `Disk quota exceeded` during pip install | PyTorch with GPU support is enormous | `pip install torch --index-url https://download.pytorch.org/whl/cpu` |
+| Low confidence on obvious negative text | Model trained on Twitter where sarcasm and slang are common | Lexical override handles explicit cases automatically |
+| Wrong language flag shown | Heuristic detection not perfect | Does not affect sentiment scores, purely cosmetic |
+| Port 5000 already in use | Something else is on 5000 | Change `port=5000` to `port=5001` in `app.py` and update the Server Address accordingly |
 
 ---
 
-*Built with Flask, PyTorch, and HuggingFace Transformers.*
-*Model: prem79/sentrix_roberta_V2 — hosted on Hugging Face Hub.*
+*Built with Flask, PyTorch, and HuggingFace Transformers.*  
+*Model: prem79/sentrix_roberta_V2 - Hugging Face Hub.*  
+*Trained on Kaggle. Deployed on GitHub Pages.*
