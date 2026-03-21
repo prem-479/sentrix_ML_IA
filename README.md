@@ -1,6 +1,8 @@
 # SENTRIX — Sentiment Analysis System
 
-A local sentiment analysis deployment using the `twitter_roberta_v2` model. The system exposes a REST API via Flask and serves a mobile-responsive frontend that connects to it over a local network.
+A local sentiment analysis deployment using the `twitter_roberta_v2` model. The system exposes a REST API via Flask and serves a mobile-responsive frontend that connects to it over a local network. The frontend is hosted on GitHub Pages and communicates with a locally running backend server.
+
+Live Frontend: https://prem-479.github.io/sentrix_ML_IA/
 
 ---
 
@@ -11,6 +13,7 @@ A local sentiment analysis deployment using the `twitter_roberta_v2` model. The 
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Running the Server](#running-the-server)
+- [Deployment](#deployment)
 - [Mobile Access](#mobile-access)
 - [API Reference](#api-reference)
 - [NLP Capabilities](#nlp-capabilities)
@@ -162,7 +165,171 @@ Open `index.html` in your browser. The status indicator will turn green when con
 
 ---
 
-## Mobile Access
+## Deployment
+
+This project uses a split deployment model:
+
+- **Frontend** — `index.html` is a single static HTML file hosted on GitHub Pages. It requires no build step and has no dependencies beyond the Google Fonts CDN.
+- **Backend** — `app.py` runs on your local machine. The frontend connects to it over your local network via the IP address you configure in the Server Address field.
+
+The backend cannot be hosted on GitHub Pages or any static hosting service because it requires Python, PyTorch, and file system access to the model weights.
+
+---
+
+### Frontend — GitHub Pages
+
+#### Initial Setup
+
+1. Create a GitHub repository (public or private).
+
+2. Push the project to GitHub:
+   ```bash
+   git init
+   git add index.html README.md requirements.txt app.py
+   git commit -m "Initial commit"
+   git branch -M main
+   git remote add origin https://github.com/your-username/your-repo.git
+   git push -u origin main
+   ```
+   Note: do not commit the `twitter_roberta_v2/` folder (model weights) or the `venv/` folder. Add them to `.gitignore`:
+   ```
+   venv/
+   __pycache__/
+   twitter_roberta_v2/
+   *.bin
+   *.safetensors
+   ```
+
+3. Enable GitHub Pages:
+   - Go to your repository on GitHub
+   - Navigate to **Settings** > **Pages**
+   - Under **Source**, select **Deploy from a branch**
+   - Set branch to `main` and folder to `/ (root)`
+   - Click **Save**
+
+4. GitHub will publish the site within 1-2 minutes. The URL will be:
+   ```
+   https://your-username.github.io/your-repo-name/
+   ```
+
+#### Updating the Frontend
+
+After editing `index.html`:
+```bash
+git add index.html
+git commit -m "Update frontend"
+git push
+```
+GitHub Pages automatically rebuilds and redeploys on every push to `main`.
+
+---
+
+### Backend — Local Server
+
+The backend must be running on your machine whenever you use the frontend. GitHub Pages only hosts `index.html` — all sentiment analysis happens on your device.
+
+#### Full Setup and Run (first time)
+
+**Linux / macOS:**
+```bash
+# Clone or download the project
+cd /path/to/project
+
+# Place the model folder here
+# twitter_roberta_v2/ must be in this directory
+
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install dependencies (CPU-only PyTorch — avoids large GPU downloads)
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+pip install -r requirements.txt
+
+# Start the server
+python3 app.py
+```
+
+**Windows (PowerShell):**
+```powershell
+# Navigate to project folder
+cd C:\path\to\project
+
+# Create virtual environment
+python -m venv venv
+.\venv\Scripts\activate
+
+# Install dependencies
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+pip install -r requirements.txt
+
+# Start the server
+python app.py
+```
+
+#### Subsequent Runs (after first-time setup)
+
+**Linux / macOS:**
+```bash
+cd /path/to/project
+source venv/bin/activate
+python3 app.py
+```
+
+**Windows (PowerShell):**
+```powershell
+cd C:\path\to\project
+.\venv\Scripts\activate
+python app.py
+```
+
+#### Connecting the Frontend to the Backend
+
+Once the server is running:
+
+1. Open https://prem-479.github.io/sentrix_ML_IA/ in your browser or on your phone.
+2. Look at the terminal output for the server address:
+   ```
+   Running on http://127.0.0.1:5000      <- PC only
+   Running on http://192.168.x.x:5000    <- use this for mobile / GitHub Pages
+   ```
+3. On the Analyze tab, paste the address into the **Server Address** field and click **Set**.
+4. The status indicator will turn green: `Online // 3 classes`.
+
+The address is saved in the browser's `localStorage` and persists between sessions. You only need to set it once per device.
+
+---
+
+### Why the Frontend Cannot Connect Automatically
+
+GitHub Pages is served over HTTPS. Browsers block requests from an HTTPS page to a plain HTTP backend (this is called a Mixed Content block). This means:
+
+- `http://localhost:5000` will be blocked when accessed from the GitHub Pages URL
+- `http://192.168.x.x:5000` will also be blocked from the GitHub Pages URL in most browsers
+- **Solution:** Open `index.html` directly from your file system (`file:///...`) or serve it locally with `python -m http.server 8080`, then use `http://localhost:8080`. Requests from `http` to `http` are not blocked.
+
+Alternatively, for a production deployment, you would place the backend behind a reverse proxy (nginx or Caddy) with a valid SSL certificate, making it accessible as `https://your-domain.com/analyze`. This is beyond the scope of a local demo but is documented in the Troubleshooting section.
+
+---
+
+### Serving the Frontend Locally (Recommended for Demo)
+
+To avoid the HTTPS Mixed Content issue during a presentation:
+
+```bash
+# In the project folder (venv does not need to be active for this)
+python3 -m http.server 8080
+# or on Windows:
+python -m http.server 8080
+```
+
+Then open `http://localhost:8080` in your browser. The backend at `http://localhost:5000` will connect without any Mixed Content restrictions.
+
+For mobile access on the same network, open `http://192.168.x.x:8080` on your phone and set the Server Address to `http://192.168.x.x:5000`.
+
+---
+
+
 
 The server binds to `0.0.0.0`, meaning it is reachable from any device on the same local network.
 
@@ -369,6 +536,9 @@ project-root/
 | Wrong language detected | Ambiguous vocabulary overlap | Known limitation of heuristic detection; does not affect sentiment scores |
 | Low confidence on profanity | Model trained on casual Twitter data | Lexical override handles this case automatically |
 | `Disk quota exceeded` during install | Full GPU PyTorch too large | Install CPU-only: `pip install torch --index-url https://download.pytorch.org/whl/cpu` |
+| Status stays Offline on GitHub Pages | Mixed Content block (HTTPS to HTTP) | Serve `index.html` locally with `python -m http.server 8080` and open `http://localhost:8080` |
+| Works on PC browser but not on phone | Phone using GitHub Pages URL (HTTPS) | Open `http://192.168.x.x:8080` on the phone instead of the GitHub Pages URL |
+| `CORS` error in browser console | Flask CORS not configured | Current `app.py` uses `flask-cors` with `CORS(app)` — all origins allowed by default |
 
 ---
 
